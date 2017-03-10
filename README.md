@@ -2,6 +2,7 @@
 # NTB localization version
 
 Crazyflie firmware branched from https://github.com/bitcraze/crazyflie-firmware/tree/c3eee25ff95bea4f44d2aa056059d1fba9bfdf1e
+
 See specific changes in commit message
 
 # Crazyflie 1.0/2.0 Firmware  [![Build Status](https://api.travis-ci.org/bitcraze/crazyflie-firmware.svg)](https://travis-ci.org/bitcraze/crazyflie-firmware)
