@@ -1,19 +1,19 @@
 #Lance Li
 Crazyflie firmware branched from https://github.com/bitcraze/crazyflie-firmware/tree/c3eee25ff95bea4f44d2aa056059d1fba9bfdf1e
-tools/make/config.mk: CFLAGS += kalman 
-	//use kalman filter instead of complementary filter
+tools/make/config.mk: CFLAGS += kalman \
+    use kalman filter instead of complementary filter
 src/deck/core/deck.c:
-	//change deck name to bcDWM1000
+    change deck name to bcDWM1000
 src/deck/drivers/interface/locodeck.h:
-	//change #anchor to 7, change locoAddress_t to uint16_t
+    change #anchor to 7, change locoAddress_t to uint16_t
 src/deck/drivers/src/locodeck.c:
-	//change CS_PIN, change TIMEOUTS, tag and anchor addresses, anchor locations, Init IRQ input, Init reset output, reset DW1000 chip, remove log add pressures
+	change CS_PIN, change TIMEOUTS, tag and anchor addresses, anchor locations, Init IRQ input, Init reset output, reset DW1000 chip, remove log add pressures
 src/deck/drivers/interface/lpsTwrTag.h:
-	//change payload structure
+	change payload structure
 src/deck/drivers/src/lpsTwrTag.c:
-	//broadcast address 0xFFFF, change source address, add debug, change report address, memcpy report, txPacket sequence number, mac packet init, remove memset pressure
+	broadcast address 0xFFFF, change source address, add debug, change report address, memcpy report, txPacket sequence number, mac packet init, remove memset pressure
 mac.h:
-	//redefine packet
+	redefine packet
 estimator_kalman.c
 position_controller_pid.c
 TestLpsTwrTag.c
