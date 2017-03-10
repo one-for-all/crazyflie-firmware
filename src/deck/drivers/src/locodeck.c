@@ -56,12 +56,12 @@
 #endif
 
 
-#define CS_PIN DECK_GPIO_IO1
+#define CS_PIN DECK_GPIO_IO4
 
 #if LPS_TDOA_ENABLE
-  #define RX_TIMEOUT 10000
+  #define RX_TIMEOUT 60000
 #else
-  #define RX_TIMEOUT 1000
+  #define RX_TIMEOUT 30000
 #endif
 
 
@@ -71,7 +71,7 @@
 // As an option you can set a static position in this file and set
 // anchorPositionOk to enable sending the anchor rangings to the Kalman filter
 
-static lpsAlgoOptions_t algoOptions = {
+/*static lpsAlgoOptions_t algoOptions = {
   .tagAddress = 0xbccf000000000008,
   .anchorAddress = {
     0xbccf000000000001,
@@ -80,7 +80,20 @@ static lpsAlgoOptions_t algoOptions = {
     0xbccf000000000004,
     0xbccf000000000005,
     0xbccf000000000006
-  },
+  },*/
+
+  static lpsAlgoOptions_t algoOptions = {
+	.tagAddress = 0x0009,
+	.anchorAddress = {
+	  0x000A,
+	  0x000B,
+	  0x0005,
+	  0x0004,
+	  0x0003,//0x0003
+	  0x0008,//0x0008
+	  0x0006 //0x0006
+	},
+
   .antennaDelay = (ANTENNA_OFFSET*499.2e6*128)/299792458.0, // In radio tick
   .rangingFailedThreshold = 6,
  
@@ -88,17 +101,18 @@ static lpsAlgoOptions_t algoOptions = {
 
   // To set a static anchor position from startup, uncomment and modify the
   // following code:
-/*
+
   .anchorPosition = {
-    {x: 0.99, y: 1.49, z: 1.80},
-    {x: 0.99, y: 3.29, z: 1.80},
-    {x: 4.67, y: 2.54, z: 1.80},
-    {x: 0.59, y: 2.27, z: 0.20},
-    {x: 4.70, y: 3.38, z: 0.20},
-    {x: 4.70, y: 1.14, z: 0.20},
+    {x: 1.062, y: 1.323 , z: 2.43},
+	{x: 1, y: -0.486, z: 2.4},
+	{x: -1.35, y: 1.323, z: 2.4},
+    {x: -1.37, y: -0.486, z: 2.43},
+	{x: 0.3, y: 0.91 , z: 0},
+    {x: 0.61, y: -1.22, z: 0},
+    {x: -1.83, y: 0.3 , z:0}
   },
   .anchorPositionOk = true,
-*/
+
 };
 
 #if LPS_TDOA_ENABLE
@@ -117,15 +131,19 @@ static uint32_t timeout;
 
 static void txCallback(dwDevice_t *dev)
 {
+	//DEBUG_PRINT(" Tx Callback ! \r\n");
   timeout = algorithm->onEvent(dev, eventPacketSent);
 }
 
 static void rxCallback(dwDevice_t *dev)
 {
+	//DEBUG_PRINT(" Rx Callback ! \r\n");
   timeout = algorithm->onEvent(dev, eventPacketReceived);
 }
 
-static void rxTimeoutCallback(dwDevice_t * dev) {
+static void rxTimeoutCallback(dwDevice_t * dev)
+{
+  //DEBUG_PRINT(" RxTimeout Callback ! \r\n");
   timeout = algorithm->onEvent(dev, eventReceiveTimeout);
 }
 
@@ -143,10 +161,17 @@ static void uwbTask(void* parameters)
   while(1) {
     if (xSemaphoreTake(irqSemaphore, timeout/portTICK_PERIOD_MS)) {
       do{
+          //DEBUG_PRINT(" I\r\n");
           dwHandleInterrupt(dwm);
+          //DEBUG_PRINT("after I\r\n");
+
       } while(digitalRead(DECK_GPIO_RX1) != 0);
     } else {
+      //DEBUG_PRINT("event timeout\r\n");
+      //const TickType_t xDelay = 2*500/portTICK_PERIOD_MS;
       timeout = algorithm->onEvent(dwm, eventTimeout);
+      //vTaskDelay(xDelay);
+      //DEBUG_PRINT("aft timeout\r\n");
     }
   }
 }
@@ -236,7 +261,7 @@ static void dwm1000Init(DeckInfo *info)
   bzero(&GPIO_InitStructure, sizeof(GPIO_InitStructure));
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  //GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 
   SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource11);
@@ -248,19 +273,19 @@ static void dwm1000Init(DeckInfo *info)
   EXTI_Init(&EXTI_InitStructure);
 
   // Init reset output
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   // Init CS pin
   pinMode(CS_PIN, OUTPUT);
 
   // Reset the DW1000 chip
-  GPIO_WriteBit(GPIOC, GPIO_Pin_10, 0);
+  //GPIO_WriteBit(GPIOC, GPIO_Pin_10, 0);
   vTaskDelay(M2T(10));
-  GPIO_WriteBit(GPIOC, GPIO_Pin_10, 1);
+  GPIO_WriteBit(GPIOB, GPIO_Pin_5, 1);
   vTaskDelay(M2T(10));
 
   // Semaphore that protect the SPI communication
@@ -277,7 +302,7 @@ static void dwm1000Init(DeckInfo *info)
   }
 
   dwEnableAllLeds(dwm);
-
+  DEBUG_PRINT("passed configure DW1000!\r\n");
   dwTime_t delay = {.full = 0};
   dwSetAntenaDelay(dwm, delay);
 
@@ -341,14 +366,14 @@ LOG_ADD(LOG_FLOAT, distance5, &algoOptions.distance[4])
 LOG_ADD(LOG_FLOAT, distance6, &algoOptions.distance[5])
 LOG_ADD(LOG_FLOAT, distance7, &algoOptions.distance[6])
 LOG_ADD(LOG_FLOAT, distance8, &algoOptions.distance[7])
-LOG_ADD(LOG_FLOAT, pressure1, &algoOptions.pressures[0])
+/*LOG_ADD(LOG_FLOAT, pressure1, &algoOptions.pressures[0])
 LOG_ADD(LOG_FLOAT, pressure2, &algoOptions.pressures[1])
 LOG_ADD(LOG_FLOAT, pressure3, &algoOptions.pressures[2])
 LOG_ADD(LOG_FLOAT, pressure4, &algoOptions.pressures[3])
 LOG_ADD(LOG_FLOAT, pressure5, &algoOptions.pressures[4])
 LOG_ADD(LOG_FLOAT, pressure6, &algoOptions.pressures[5])
 LOG_ADD(LOG_FLOAT, pressure7, &algoOptions.pressures[6])
-LOG_ADD(LOG_FLOAT, pressure8, &algoOptions.pressures[7])
+LOG_ADD(LOG_FLOAT, pressure8, &algoOptions.pressures[7])*/
 LOG_ADD(LOG_UINT16, state, &algoOptions.rangingState)
 LOG_GROUP_STOP(ranging)
 
